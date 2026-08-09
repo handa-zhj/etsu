@@ -72,10 +72,16 @@ button {
     background-color: white;
     border-radius: 12px;
     transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }
 
 button:hover {
     background-color: var(--bg-color-2);
+}
+
+button:focus {
+    outline: none;
 }
 
 button:active {
@@ -164,6 +170,19 @@ button:active {
     button { font-size: 1.4rem; padding: 15px; }
     .cert-rank { font-size: 2.5rem; }
     .cert-title { font-size: 2rem; }
+    .certificate {
+        padding: 20px 15px;
+        aspect-ratio: auto;
+        width: 92%;
+        gap: 12px;
+    }
+    .cert-body {
+        font-size: 1.1rem;
+        line-height: 1.8;
+    }
+    .cert-footer {
+        font-size: 1rem;
+    }
 }
 
 .bg-2 {
