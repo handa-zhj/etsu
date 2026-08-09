@@ -246,8 +246,8 @@ function showCertificate(rank) {
             '<div class="cert-title">越検定 合格証</div>' +
             '<div class="cert-rank">越検定 ' + rank + '</div>' +
             '<div class="cert-body">' +
-                'あなたは「越」に関する深い知識を有し、<br>' +
-                '本検定において優秀な成績を収めたことを<br>' +
+                'あなたは「越」に関する深い知識を有し、' +
+                '本検定において優秀な成績を収めたことを' +
                 'ここに証します。' +
             '</div>' +
             '<div class="cert-footer">' +
