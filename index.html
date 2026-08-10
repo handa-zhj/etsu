@@ -1,3 +1,10 @@
+<!--
+    越検定 Webアプリ
+    - 「越」に関する四択問題をランダムに10問出題
+    - 得点に応じて級を判定し、合格者には合格証を表示
+    - 合格証はCanvasでPNG画像として生成・保存
+    - 外部ライブラリは使用せず、HTML/CSS/JavaScriptのみで構成
+-->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -8,6 +15,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Sawarabi+Mincho&display=swap" rel="stylesheet">
     <style>
+/* =========================
+   デザイン用の共通変数
+   ========================= */
 :root {
     --bg-color-1: #f5f0e6;
     --bg-color-2: #e8e0d4;
@@ -15,18 +25,18 @@
     --accent-color: #5c3d2e;
     --correct-color: #2e5c45;
     --wrong-color: #8b2e2e;
-    --ink-color: #1a1a1a;
     --vermilion: #b22222;
     --gold: #b8860b;
 }
 
+/* ブラウザ既定の余白を解除し、要素の寸法計算を統一 */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
-/* 和紙テクスチャ */
+/* ページ全体：和紙風の背景と縦方向レイアウト */
 body {
     font-family: "Noto Serif JP", "Sawarabi Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
     background-color: var(--bg-color-1);
@@ -43,7 +53,7 @@ body {
     background-size: 200px 200px, 100% 100%, 100% 100%;
 }
 
-/* 紙の縁 ぼろぼろ演出 */
+/* 画面端：和紙の切り口を思わせる装飾 */
 body::before {
     content: "";
     position: fixed;
@@ -67,7 +77,9 @@ body::before {
     position: relative;
 }
 
-/* Typography */
+/* =========================
+   文字・本文
+   ========================= */
 h1 {
     font-family: "Sawarabi Mincho", "Noto Serif JP", serif;
     font-size: 3.8rem;
@@ -107,7 +119,9 @@ h3 {
     letter-spacing: 0.05em;
 }
 
-/* Buttons */
+/* =========================
+   ボタン
+   ========================= */
 .btn-container {
     display: grid;
     grid-template-columns: 1fr;
@@ -205,7 +219,9 @@ button:active {
     background-color: var(--accent-color);
 }
 
-/* Progress Bar */
+/* =========================
+   進捗バー
+   ========================= */
 .progress-container {
     height: 10px;
     background-color: rgba(92,61,46,0.12);
@@ -235,7 +251,9 @@ button:active {
     box-shadow: 0 0 6px rgba(92,61,46,0.4);
 }
 
-/* Transition / Fade */
+/* =========================
+   画面切り替えアニメーション
+   ========================= */
 .fade-in {
     animation: fadeIn 0.5s ease forwards;
 }
@@ -306,7 +324,9 @@ button:active {
     100% { transform: scale(1); opacity: 0.9; }
 }
 
-/* Certificate Styles */
+/* =========================
+   合格証の表示
+   ========================= */
 .certificate-overlay {
     position: fixed;
     top: 0; left: 0;
@@ -344,7 +364,7 @@ button:active {
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* 賞状 四隅の飾り */
+/* 合格証の四隅を飾る装飾 */
 .certificate::before,
 .certificate::after {
     content: "❧";
@@ -371,7 +391,7 @@ button:active {
 .cert-corner-bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
 .cert-corner-br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
 
-/* 落款印影 */
+/* 合格証の落款（印影） */
 .cert-seal {
     position: absolute;
     bottom: 20px;
@@ -418,6 +438,7 @@ button:active {
     max-width: 90%;
 }
 
+/* 合格証の発行日・発行者名 */
 .cert-footer {
     width: 100%;
     text-align: right;
@@ -428,10 +449,6 @@ button:active {
     position: relative;
 }
 
-/* 落款印影 */
-.cert-footer {
-    position: relative;
-}
 
 .cert-close-hint {
     position: absolute;
@@ -444,7 +461,7 @@ button:active {
     white-space: nowrap;
 }
 
-/* Background switch */
+/* 問題の途中で切り替える背景色 */
 .bg-2 {
     background-color: var(--bg-color-2);
 }
@@ -452,7 +469,7 @@ button:active {
 .correct { color: var(--correct-color); }
 .wrong { color: var(--wrong-color); }
 
-/* Mobile Adjustments */
+/* 画面幅600px以下：スマートフォン向け調整 */
 @media (max-width: 600px) {
     body::before { border-width: 8px; }
 
@@ -530,28 +547,45 @@ button:active {
     </style>
 </head>
 <body>
+    <!-- クイズ本体。JavaScriptから画面内容を動的に差し替える。 -->
     <div id="app" class="container"></div>
+
+    <!-- 現在何問目かを示す進捗バー。 -->
     <div class="progress-container">
         <div id="progress-bar" class="progress-bar"></div>
     </div>
     <script>
+/* =========================
+   越検定：問題データ
+   q = 問題文 / a = 選択肢 / c = 正解の選択肢番号（0始まり）
+   ========================= */
 const questions = [
+
+    // --- 基本的な意味と使い方 ---
     { q: "漢字の「越」の基本的な意味に含まれないものはどれ？", a: ["境目をこえる", "他よりすぐれる", "その場にとどまる", "時期が経過する"], c: 2 },
     { q: "卓越と優越について、間違っているものはどれ？", a: ["卓越は絶対的な突出", "優越は相対的な比較", "卓越は比較対象がなければならない", "優越は立場・地位・感情を表すときに使う"], c: 2 },
+
+    // --- 漢字の成り立ちと語源 ---
     { q: "「越」という字を構成する左側の要素は何？", a: ["走（はしる）", "歩（あゆむ）", "足（あし）", "行（いく）"], c: 0 },
     { q: "「越」の右側にある戉は何の形をかたどったもの？", a: ["長い矛（ほこ）", "四角い盾（たて）", "大きな斧（まさかり）", "しなる弓（ゆみ）"], c: 2 },
     { q: "古代中国において戉は何の象徴とされていた？", a: ["豊作の祈り", "王権や軍事力", "商売繁盛", "学問の成就"], c: 1 },
     { q: "「越」の字の成り立ちにおいて、戉にはどのような役割がある？", a: ["境界線を引く", "障害を切り開き進む", "地面を耕す", "獲物を捕らえる"], c: 1 },
+
+    // --- 画数および書き順 ---
     { q: "「越」の字の画数は全部で何画？", a: ["10画", "11画", "12画", "13画"], c: 2 },
     { q: "「越」の字の左側「そうにょう（走）」は何画？", a: ["5画", "6画", "7画", "8画"], c: 2 },
     { q: "「越」の字の右側「えつ（戉）」は何画？", a: ["3画", "4画", "5画", "6画"], c: 2 },
     { q: "「越」の字の右側はどれ？", a: ["戉", "戈", "戊", "戍"], c: 0 },
+
+    // --- 中国・ベトナムにおける「越」 ---
     { q: "中国の春秋時代に存在し、勾践（こうせん）王が治めた国名は？", a: ["呉", "越", "楚", "秦"], c: 1 },
     { q: "中国の春秋時代に、勾践（こうせん）王が治めた越国は、現在のどこにあった？", a: ["浙江省", "江蘇省", "山東省", "河北省"], c: 0 },
     { q: "古代中国南部からベトナム北部に居住した諸民族の総称は？", a: ["南蛮", "百越", "東夷", "西戎"], c: 1 },
     { q: "古代中国南部からベトナム北部に居住した民族・百越（ひゃくえつ）の人々が特に長けていたものは？", a: ["陶芸と漆工", "稲作と航海術", "鉄器の製造", "文字の発明"], c: 1 },
     { q: "ベトナムの国名「越南（えつなん）」の「越」の由来は？", a: ["山を越える国", "百越の流れを汲む歴史", "越国が移転した地", "優れた南の国"], c: 1 },
     { q: "ベトナムの国名「越南」はいつ「ベトナム」に変わった？", a: ["変わっていない", "第一次大戦後", "第二次大戦後", "ベトナム戦争後"], c: 0 },
+
+    // --- 日本における「越（こし）」 ---
     { q: "日本の北陸道一帯にあった越の国。誰が統治していた？", a: ["豪族", "国司", "地頭", "大名"], c: 0 },
     { q: "日本の北陸道一帯にあった越の国。別の表記は？", a: ["高志・古志", "越路・越地", "北越・南越", "遠志・近志"], c: 0 },
     { q: "日本の北陸道一帯にあった越の国。名前の由来として有力な説は？", a: ["越人が住んでいた", "都から見て山々を越えて行く遠い地", "優れた土地であった", "越後が北陸の中心地だった"], c: 1 },
@@ -562,32 +596,50 @@ const questions = [
     { q: "越前を治めた大名として有名なのは誰？", a: ["浅井長政", "朝倉義景", "足利義昭", "武田元明"], c: 1 },
     { q: "越中を治めた大名として有名なのは誰？", a: ["六角義賢", "柴田勝家", "佐々成政", "大久保忠世"], c: 2 },
     { q: "越後を治めた大名として有名なのは上杉謙信。その上杉謙信の終生のライバルといえば誰？", a: ["滝川一益", "丹羽長秀", "前田利家", "武田信玄"], c: 3 },
+
+    // --- 言葉の持つニュアンスと印象 ---
     { q: "「越権」や「越境」という言葉が与えるニュアンスとして、間違っているものは？", a: ["傲慢", "挑戦", "逸脱", "怠惰"], c: 3 },
+
+    // --- 名字や人名における意味 ---
     { q: "「越」という名字の由来として多いものは？", a: ["職業由来", "地形由来", "宗教由来", "外国由来"], c: 1 },
     { q: "「越」という名字は特にどの地方に多い？", a: ["東北・北海道", "北陸・長野・関東", "四国・九州", "中国・近畿"], c: 1 },
+
+    // --- 「越」がつく日本の地名（市区町村名） ---
     { q: "「小江戸」として知られる埼玉県にある市は？", a: ["川越市", "南越谷市", "越正町", "新越谷市"], c: 0 },
     { q: "埼玉県川越市の名前の由来とされる川は？", a: ["多摩川", "荒川", "入間川", "利根川"], c: 2 },
     { q: "埼玉県にある難読地名「越生」の正しい読み方は？", a: ["こしお", "こしなま", "おごせ", "えつなま"], c: 2 },
     { q: "川越市、越谷市、越生町。埼玉はなぜ越がつく地名が多い？", a: ["越の国の住民が多く移住した", "越を名乗る住民が多い", "越後守受領者が多い", "交通の難所である"], c: 3 },
+
+    // --- 「越」がつく日本の地名（地域・町名） ---
     { q: "新潟県長岡市にある、北陸道の路を象徴する旧町名は？", a: ["越路", "越前", "越中", "越後"], c: 0 },
     { q: "「上越・中越・下越」の区分は何に基づいている？", a: ["標高の高さ", "緯度の高低", "都（京都）からの距離", "面積の広さ"], c: 2 },
     { q: "「鳥越」という地名に込められることが多い意味は？", a: ["鳥を飼う場所", "鳥でないと飛び越えられない", "鳥が飛んでこない場所", "鳥の形をした山"], c: 1 },
+
+    // --- 「越」がつく日本の地名（鉄道駅・路線名） ---
     { q: "出羽（山形・秋田）と越後を結ぶ路線の名前は？", a: ["信越本線", "羽越本線", "北陸本線", "上越線"], c: 1 },
     { q: "信越本線が結んでいる地域の組み合わせは？", a: ["信濃（長野）と越前", "信濃（長野）と越後", "信濃（長野）と越中", "伊勢（三重）と越後"], c: 1 },
     { q: "川端康成の小説『雪国』の舞台として知られる駅は？", a: ["越後湯沢駅", "長岡駅", "新潟駅", "越中島駅"], c: 0 },
+
+    // --- 「越」がつく日本の地名（難読地名・珍しい地名） ---
     { q: "愛媛県八幡浜市にある難読地名「神越」の読み方は？", a: ["かみこし", "しんえつ", "みのこし", "じんごし"], c: 2 },
     { q: "福島県石川町の難読地名「越代」の読み方は？", a: ["えつだい", "こしだい", "おちだい", "えっしろ"], c: 1 },
     { q: "岩手県田野畑村の三陸海岸にある「島越」の読み方は？", a: ["とうえつ", "しまこえ", "しまこし", "とうごし"], c: 2 },
+
+    // --- 難読字 ---
     { q: "日本の雅楽の代表的な曲名「越天楽」の読み方は？", a: ["えつてんらく", "えてんらく", "こしてんらく", "おちてんらく"], c: 1 },
     { q: "「あやまち、過失」を意味し、「落ち度」の語源とされる言葉は？", a: ["越度（おちど）", "越務（おちむ）", "越楽（おらく）", "越制（えせい）"], c: 0 },
     { q: "役人が通常の順序を飛び越えて昇進することを指す言葉は？", a: ["越位（えつい）", "越階（おっかい）", "越順（えじゅん）", "越昇（えっしょう）"], c: 1 },
     { q: "正規の手続きを無視して最高権力者に訴え出る行為を指す言葉は？", a: ["越直（えじつ）", "上越（じょうえ）", "越訴（おっそ）", "出越（しゅつえ）"], c: 2 },
     { q: "お寺を支える信者を指し、「檀家」の語源となった言葉は？", a: ["檀越（だんおち・だんおつ）", "檀越（だんえつ）", "檀越（だんこし）", "檀越（だんごえ）"], c: 0 },
     { q: "6月末に行われる罪や穢れを祓う神事の名前は？", a: ["夏越（なごし）の祓", "越年（えつねん）の祓", "越境（えっきょう）の祓", "越階（おっかい）の祓"], c: 0 },
+
+    // --- 時代劇における「越後屋」 ---
     { q: "時代劇の悪徳商人「越後屋」の実在モデルの出身地は？", a: ["越後（新潟）", "伊勢（三重）", "近江（滋賀）", "江戸（東京）"], c: 1 },
     { q: "三井家の屋号「越後屋」の由来となった、先祖が名乗っていた官職名は？", a: ["越後藩主", "越後守", "越後奉行", "越後代官"], c: 1 },
     { q: "実在の越後屋（三越のルーツ）が掲げた画期的な商法は？", a: ["富くじ商売", "現金掛け値なし", "置き薬", "産地直送"], c: 1 },
     { q: "時代劇で「越後屋」が悪役として定着した理由の一つとされる事件は？", a: ["三井事件", "三越事件", "越後事件", "昭和事件"], c: 1 },
+
+    // --- 受領名としての越後守 ---
     { q: "紫式部の父で、実際に越後守として赴任した人物は？", a: ["藤原 為時", "藤原 道長", "藤原 定家", "藤原 頼通"], c: 0 },
     { q: "平安時代の武将・木曽義仲が、平家追討後に臨時に拝命した官職名は？", a: ["越前守", "越中守", "越後守", "越州守"], c: 2 },
     { q: "「越後の虎」と呼ばれ、正式に越後守を叙任された戦国大名は？", a: ["直江兼続", "上杉謙信", "最上義光", "河田長親"], c: 1 },
@@ -595,10 +647,13 @@ const questions = [
     { q: "三井家の「家祖（創業者）」で、江戸で越後屋を開業したのは？", a: ["三井 高利", "三井 高安", "三井 高俊", "三井 高平"], c: 0 },
     { q: "「越後騒動」で知られる越後高田藩主・松平光長は、徳川家康の何にあたる？", a: ["孫", "曾孫", "玄孫", "子"], c: 1 },
     { q: "律令制において、越後国が位置づけられていたランクは？", a: ["大国", "上国", "中国", "下国"], c: 1 },
-    { q: "三国志に登場する武将で、公孫瓚の弟の名前は？", a: ["公孫 越", "公孫 度", "公孫 恭", "公孫 淵"], c: 0 },
+
+    // --- 越がつく歴史上の有名人 ---
+    { q: "正史「三国志」に登場する武将で、公孫瓚の弟の名前は？", a: ["公孫 越", "公孫 度", "公孫 恭", "公孫 淵"], c: 0 },
     { q: "中国明代の武将で、国防大臣級にまで昇進し文武両道で知られたのは？", a: ["王 越", "李 越", "張 越", "劉 越"], c: 0 }
 ];
 
+/* 正解時に追加表示する解説。問題文をキーにして参照する。 */
 const correctExpls = {
     "「あやまち、過失」を意味し、「落ち度」の語源とされる言葉は？": "越度が変化して現在の「落ち度」になったと言われています。",
     "古代中国において戉は何の象徴とされていた？": "斧が持つ霊的な力によって、困難や境界を突破していくという力強いニュアンスがその根源にあります。",
@@ -606,23 +661,29 @@ const correctExpls = {
     "実在の越後屋（三越のルーツ）が掲げた画期的な商法は？": "現金掛け値なしは、定価販売・即時決済のことです。当時は後払いが主流でした。",
     "時代劇で「越後屋」が悪役として定着した理由の一つとされる事件は？": "三越事件は、1982年、当時の三越社長が愛人への利益供与、商品不正仕入れ、独裁的な経営のため、取締役会で社長を解任された事件です。",
     "「越後騒動」で知られる越後高田藩主・松平光長は、徳川家康の何にあたる？": "越後騒動：松平光長は徳川家康の曾孫にあたる名門でしたが、後継者問題をめぐって藩内が真っ二つに割れ、幕府が介入して事態を収拾しました。",
-    "三国志に登場する武将で、公孫瓚の弟の名前は？": "公孫越の戦死が、袁紹戦争のきっかけになりました。"
+    "正史「三国志」に登場する武将で、公孫瓚の弟の名前は？": "公孫越の戦死が、袁紹戦争のきっかけになりました。"
 };
 
+/* =========================
+   クイズの実行状態
+   ========================= */
 let currentQuestions = [];
 let currentIdx = 0;
 let score = 0;
 let audioCtx = null;
 
+/* 画面を書き換える主要要素と進捗バー */
 const app = document.getElementById('app');
 const progressBar = document.getElementById('progress-bar');
 
+/* Web Audio API の初期化。ユーザー操作後に呼び出す。 */
 function initAudio() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 }
 
+/* 正解・不正解に応じて短い効果音を再生する。 */
 function playSound(type) {
     if (!audioCtx) return;
     const osc = audioCtx.createOscillator();
@@ -649,7 +710,7 @@ function playSound(type) {
     }
 }
 
-/* 墨アニメーション */
+/* 正解なら墨の広がり、不正解なら朱印風の×を表示する。 */
 function playInkAnimation(type) {
     const overlay = document.createElement('div');
     overlay.className = 'ink-overlay';
@@ -668,12 +729,14 @@ function playInkAnimation(type) {
     }, 900);
 }
 
+/* タイトル画面を表示し、進捗バーを初期化する。 */
 function showTitle() {
     document.body.classList.remove('bg-2');
     progressBar.style.width = '0%';
     app.innerHTML = '<div class="fade-in"><h1>越検定</h1><h3>あなたも検定に合格して「越」に入ろう</h3><br><button class="start-btn" onclick="startQuiz()">START</button></div>';
 }
 
+/* 問題をシャッフルし、10問を選んでクイズを開始する。 */
 function startQuiz() {
     initAudio();
     score = 0;
@@ -687,6 +750,7 @@ function startQuiz() {
     showQuestion();
 }
 
+/* 現在の問題と選択肢を画面に描画する。 */
 function showQuestion() {
     if (document.activeElement) {
         document.activeElement.blur();
@@ -707,10 +771,11 @@ function showQuestion() {
         '<div class="question-text">' + qData.q + '</div>' +
         '<div id="feedback" class="message-text"></div>' +
         '<div class="btn-container">' +
-            options.map(opt => '<button style="background-color:rgba(255,253,248,0.95)" onclick="handleAnswer(' + opt.isCorrect + ', this)">' + opt.text + '</button>').join('') +
+            options.map(opt => '<button style="background-color:rgba(255,253,248,0.95)" onclick="handleAnswer(' + opt.isCorrect + ')">' + opt.text + '</button>').join('') +
         '</div></div>';
 }
 
+/* 次の問題へ進み、10問終了後は結果画面を表示する。 */
 function goNext() {
     currentIdx++;
     if (currentIdx < 10) {
@@ -720,7 +785,8 @@ function goNext() {
     }
 }
 
-function handleAnswer(isCorrect, btn) {
+/* 選択肢を確定し、正誤表示・効果音・解説・次への遷移を処理する。 */
+function handleAnswer(isCorrect) {
     const feedback = document.getElementById('feedback');
     const btnContainer = document.querySelector('.btn-container');
     const buttons = btnContainer.querySelectorAll('button');
@@ -755,6 +821,7 @@ function handleAnswer(isCorrect, btn) {
     }
 }
 
+/* 10問の得点から級を決定し、結果画面を表示する。 */
 function showResult() {
     let rank = "";
     let message = "";
@@ -778,6 +845,7 @@ function showResult() {
     document.getElementById('back-btn').onclick = showTitle;
 }
 
+/* 現在日付を和暦で表示する。対応していない環境では西暦にフォールバックする。 */
 function getJapaneseDate() {
     try {
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -788,6 +856,7 @@ function getJapaneseDate() {
     }
 }
 
+/* 合格証をCanvasに描画し、PNGとして保存できるData URLを生成する。 */
 function generateCertificateImage(rank, dateStr) {
     const W = 1400, H = 990;
     const canvas = document.createElement('canvas');
@@ -834,12 +903,12 @@ function generateCertificateImage(rank, dateStr) {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(W / 2 - 300, 225); ctx.lineTo(W / 2 + 300, 225); ctx.stroke();
 
-    // 級
+    // 合格した級を中央に表示
     ctx.font = '900 110px "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif';
     ctx.fillStyle = '#b22222';
     ctx.fillText('越検定 ' + rank, W / 2, 400);
 
-    // 本文
+    // 合格証の本文
     ctx.font = '38px "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif';
     ctx.fillStyle = '#3a3a3a';
     const lines = [
@@ -851,14 +920,14 @@ function generateCertificateImage(rank, dateStr) {
         ctx.fillText(line, W / 2, 540 + i * 68);
     });
 
-    // 落款
+    // 日付と発行者名
     ctx.textAlign = 'right';
     ctx.font = '32px "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif';
     ctx.fillStyle = '#555';
     ctx.fillText(dateStr, W - 130, 820);
     ctx.fillText('越検定協会', W - 130, 870);
 
-    // 印影
+    // 朱色の印影
     ctx.save();
     ctx.translate(W - 200, 840);
     ctx.rotate(-12 * Math.PI / 180);
@@ -875,6 +944,7 @@ function generateCertificateImage(rank, dateStr) {
     return canvas.toDataURL('image/png');
 }
 
+/* 合格証のHTML表示と画像保存ボタンを生成する。背景タップでタイトルへ戻る。 */
 function showCertificate(rank) {
     const overlay = document.createElement('div');
     overlay.className = 'certificate-overlay';
@@ -887,7 +957,7 @@ function showCertificate(rank) {
 
     const dateStr = getJapaneseDate();
 
-    // HTML表示用
+    // 画面上に表示する合格証をHTML要素として構築
     const certDiv = document.createElement('div');
     certDiv.className = 'certificate';
     certDiv.innerHTML =
@@ -908,7 +978,7 @@ function showCertificate(rank) {
         '<div class="cert-close-hint">画面をタップして閉じる</div>';
     overlay.appendChild(certDiv);
 
-    // 画像保存ボタン
+    // Canvasで生成した合格証画像を保存するボタン
     const saveBtn = document.createElement('button');
     saveBtn.textContent = '画像として保存';
     saveBtn.style.cssText = 'margin-top:24px;padding:14px 36px;font-size:1.2rem;font-family:"Noto Serif JP",serif;background:#5c3d2e;color:#fdf5e6;border:2px solid #5c3d2e;border-radius:4px;cursor:pointer;letter-spacing:0.15em;box-shadow:2px 2px 8px rgba(0,0,0,0.3);';
