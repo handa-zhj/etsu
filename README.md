@@ -147,6 +147,8 @@
 * 公孫越（こうそんえつ）：中国・後漢末期の武将。公孫瓚の弟として三国志に登場します。彼の死が袁紹戦争につながりました。
 * 王越（おうえつ） : 中国・明代の武将。国防大臣級にまで昇進しました。詩文にも優れ、文武両道の代表格として広く知られました。
 
+<br>
+
 # 越検定アプリ
 
 ## 目的
@@ -667,3 +669,69 @@ HTML/CSSによる合格証オーバーレイを表示する。
 15. iOS系ブラウザでも画像を確認できる。
 16. タイトル画面へ戻れる。
 17. PC・モバイルの双方でレイアウトが破綻しない。
+
+<br>
+
+# 文字「越」をGIFアニメにする方法
+
+## KanjiVG.org を使用する
+
+* https://kanjivg.tagaini.net/ にアクセス
+* 「越」を検索し、SVGをダウンロードする
+* 「越」は12画なので、SVGは12のパートに分かれている
+* 「走」の横棒から始めて、「戉」の最後の点までの12のSVGファイルを作成する。
+
+例として、最初の第一画目のSVGの一部を以下に示す。
+```SVG:01.svg
+<g id="kvg:08d8a" kvg:element="越">
+	<g id="kvg:08d8a-g1" kvg:element="走" kvg:position="nyo" kvg:radical="general">
+		<g id="kvg:08d8a-g2" kvg:element="土" kvg:position="top">
+			<path id="kvg:08d8a-s1" kvg:type="㇐" d="M18.69,30.41c1.53,0.65,2.98,0.48,4.58,0.33c5.41-0.52,13.44-1.73,18.24-2.25c1.24-0.13,2.24-0.24,3.55-0.11"/>
+		</g>
+	</g>
+</g>
+```
+
+## SVGをGIFに変換する
+
+```Python:make_gif.py
+# pip install cairosvg pillow
+
+import cairosvg
+from PIL import Image
+import os
+
+# 入力SVGファイル（01.svg ～ 12.svg）
+frames = [f"{i:02}.svg" for i in range(1, 13)]
+# 繰返しを考慮し、最後のフレームをさらに2フレーム追加する
+frames.append("12.svg")
+frames.append("12.svg")
+print(frames)
+
+# 一時PNG保存フォルダ
+tmp_dir = "tmp_png"
+os.makedirs(tmp_dir, exist_ok=True)
+
+png_files = []
+
+# SVG → PNG 変換
+for svg in frames:
+    png_path = os.path.join(tmp_dir, svg.replace(".svg", ".png"))
+    cairosvg.svg2png(url=svg, write_to=png_path)
+    png_files.append(png_path)
+
+# PNG → GIF 生成
+images = [Image.open(png) for png in png_files]
+
+# GIFとして保存（ディレイはdurationパラメータで調整）
+gif_file = "etsu.gif"
+images[0].save(
+    gif_file,
+    save_all=True,
+    append_images=images[1:],
+    duration=250,   # 1フレーム250ms
+    loop=0
+)
+
+print(f"GIF を {gif_file} として生成しました")
+```
