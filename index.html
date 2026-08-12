@@ -1,9 +1,29 @@
 <!--
-    越検定 Webアプリ
+    越検定 Webアプリ（iPadOS 15.8.x 対応版）
     - 「越」に関する四択問題をランダムに10問出題
     - 得点に応じて級を判定し、合格者には合格証を表示
     - 合格証はCanvasでPNG画像として生成・保存
     - 外部ライブラリは使用せず、HTML/CSS/JavaScriptのみで構成
+
+    修正履歴：(iPadOS 15.8.x ＝ Safari 15 対策)
+    ---------------------------------------------------------------
+    (A) .certificate の aspect-ratio: 1.414 / 1 を
+        @supports not (aspect-ratio: 1 / 1) ブロック内の
+        padding-top: 70.72% ハックに置き換え。
+        → iPadOS 15 の Safari 15.x は aspect-ratio が未実装で
+          ルールが丸ごと破棄され、合格証が縦に伸びて画面下端の
+          進捗バー領域を覆い隠していた。
+
+    (B) .progress-container を flex 兄弟から外し
+        position: fixed / bottom: 0 / z-index: 80 に変更。
+        → Safari 15 は flex 親内で transition: width を持つ子要素の
+          高さ計算にバグがあり、高さ 10px が 0 に潰れる事例があるため。
+        → さらに body::before(border-image, z-index:50) より前面に置き、
+          装飾ボーダの真下に潜り込まないようにした。
+
+    (C) .container に padding-bottom: 34px を追加し、
+        固定された進捗バーと本文が重ならない余白を確保。
+    ---------------------------------------------------------------
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -59,7 +79,7 @@ body::before {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     pointer-events: none;
-    z-index: 50;
+    z-index: 60;
     border: 12px solid transparent;
     border-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='none'/%3E%3Cpath d='M0 0c5 2 10 0 15 3s10-1 15 2 10-2 15 1 10 0 15 2V0H0zM0 60c5-2 10 0 15-3s10 1 15-2 10 2 15-1 10 0 15-2V60H0zM0 0c2 5 0 10 3 15s-1 10 2 15-2 10 1 15 0 10 2 15H0V0zM60 0c-2 5 0 10-3 15s1 10-2 15 2 10-1 15 0 10-2 15H60V0z' fill='%235c3d2e' opacity='0.15'/%3E%3C/svg%3E") 30 stretch;
     opacity: 0.6;
@@ -72,9 +92,11 @@ body::before {
     justify-content: center;
     align-items: center;
     padding: 28px;
+    padding-bottom: 52px; /* 固定した進捗バー（高さ10px＋α）のぶん余白を確保 */
     text-align: center;
     overflow-y: auto;
     position: relative;
+    z-index: 1;
 }
 
 /* =========================
@@ -220,15 +242,21 @@ button:active {
 }
 
 /* =========================
-   進捗バー
+   進捗バー（Safari 15 対応）
+   - position: fixed で最下部に固定し flex 配線から切り離す。
+   - body::before(z-index:60) より前面に出す。
+   - transform: translateZ(0) でヒットテストと再描画を安定化。
    ========================= */
 .progress-container {
     height: 10px;
     background-color: rgba(92,61,46,0.12);
     width: 100%;
-    flex-shrink: 0;
-    position: relative;
-    z-index: 10;
+    flex-shrink: 0;          /* 既存値（flex 子として残した場合の保険として保持） */
+    position: fixed;         /* ← flex 兄弟から外して最下部に固定 */
+    left: 0;
+    bottom: 0;
+    z-index: 80;             /* body::before(60) より上、cert-overlay(100) より下 */
+    transform: translateZ(0);
 }
 
 .progress-bar {
@@ -339,6 +367,9 @@ button:active {
     backdrop-filter: blur(3px);
 }
 
+/* 縦横比 1.414:1（A4）を維持するため、まず新仕様で指定。
+   Safari 15 は aspect-ratio を実装していないため、
+   下部の @supports not (...) ブロックで padding-top ハックへフォールバック。 */
 .certificate {
     background-color: #fffaf0;
     background-image:
@@ -348,6 +379,7 @@ button:active {
     padding: 48px 40px;
     width: 90%;
     max-width: 720px;
+    /* 新ブラウザ向け：これで 1.414:1 を維持 */
     aspect-ratio: 1.414 / 1;
     display: flex;
     flex-direction: column;
@@ -478,7 +510,7 @@ button:active {
 
     .container {
         justify-content: flex-start;
-        padding: 24px 18px 18px;
+        padding: 24px 18px 42px;
         overflow-y: auto;
     }
 
@@ -517,7 +549,7 @@ button:active {
     .cert-title { font-size: 1.7rem; }
     .certificate {
         padding: 28px 18px;
-        aspect-ratio: auto;
+        aspect-ratio: auto;  /* 新ブラウザ向け：モバイル幅では比率解除 */
         width: 92%;
         gap: 14px;
     }
@@ -544,6 +576,63 @@ button:active {
         border-width: 2px;
     }
 }
+
+/* ============================================================
+   Safari 15.x（iPadOS 15.8.x）向けフォールバック
+   ------------------------------------------------------------
+   aspect-ratio を実装していない環境では
+   width 90% × padding-top:70.72%（=100/√2）で 1.414:1 を再現し、
+   中身は全要素を absolute 配置で枠内に収める。
+   ============================================================ */
+@supports not (aspect-ratio: 1 / 1) {
+    /* タイトル画面比率（参考）：新仕様の aspect-ratio が無効な環境用 */
+    .certificate {
+        height: 0;
+        padding-top: 70.72%; /* 1/1.414 ≈ 0.7072 → 約 70.72% */
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    .certificate > * {
+        position: absolute;
+        left: 40px;
+        right: 40px;
+    }
+    /* 上下のパディングを absolute 配置で吸収 */
+    .certificate { padding: 28px 40px; }
+    /* 四隅の装飾も absolute 化 */
+    .cert-corner-tl,
+    .cert-corner-tr,
+    .cert-corner-bl,
+    .cert-corner-br { position: absolute; }
+    /* タイトル／級／本文／フッターを上から配置 */
+    .cert-title    { top: calc(50% - 240px); text-align: center; }
+    .cert-rank     { top: calc(50% - 80px);  text-align: center; }
+    .cert-body     { top: calc(50% + 40px);  text-align: center; left: 60px; right: 60px; }
+    .cert-footer   { bottom: 24px; right: 40px; left: auto; text-align: right; }
+    .cert-seal     { bottom: 20px; right: 24px; }
+    .cert-close-hint { bottom: -36px; }
+    /* 内側要素（saveBtn）も absolute 化 */
+    .certificate > button {
+        left: 50%;
+        transform: translateX(-50%);
+        top: auto;
+        right: auto;
+        bottom: 70px;
+    }
+
+    @media (max-width: 600px) {
+        .certificate {
+            width: 92%;
+            padding: 20px 18px;
+        }
+        .cert-title  { top: calc(50% - 200px); left: 18px; right: 18px; }
+        .cert-rank   { top: calc(50% - 80px);  left: 18px; right: 18px; }
+        .cert-body   { top: calc(50% + 20px);  left: 18px; right: 18px; }
+        .cert-footer { bottom: 18px; right: 18px; }
+        .cert-seal   { bottom: 12px; right: 14px; }
+        .certificate > button { left: 50%; transform: translateX(-50%); bottom: 56px; }
+    }
+}
     </style>
 </head>
 <body>
@@ -563,7 +652,8 @@ const questions = [
 
     // --- 基本的な意味と使い方 ---
     { q: "漢字の「越」の基本的な意味に含まれないものはどれ？", a: ["境目をこえる", "他よりすぐれる", "その場にとどまる", "時期が経過する"], c: 2 },
-    { q: "卓越と優越について、間違っているものはどれ？", a: ["卓越は絶対的な突出", "優越は相対的な比較", "卓越は比較対象がなければならない", "優越は立場・地位・感情を表すときに使う"], c: 2 },
+    { q: "卓越と優越について、間違っているものはどれ？", a: ["卓越　絶対的な突出", "優越　相対的な比較", "卓越　比較対象が要る", "優越　立場・地位・感情を表す"], c: 2 },
+    { q: "超越ということばがありますが、超と越の違いはどれ？", a: ["越　過ぎ去る", "超　上に抜け出る", "越　数値・レベルが上", "超　向こう側へ渡る"], c: 1 },
 
     // --- 漢字の成り立ちと語源 ---
     { q: "「越」という字を構成する左側の要素は何？", a: ["走（はしる）", "歩（あゆむ）", "足（あし）", "行（いく）"], c: 0 },
@@ -650,18 +740,23 @@ const questions = [
 
     // --- 越がつく歴史上の有名人 ---
     { q: "正史「三国志」に登場する武将で、公孫瓚の弟の名前は？", a: ["公孫 越", "公孫 度", "公孫 恭", "公孫 淵"], c: 0 },
-    { q: "中国明代の武将で、国防大臣級にまで昇進し文武両道で知られたのは？", a: ["王 越", "李 越", "張 越", "劉 越"], c: 0 }
+    { q: "中国明代の武将で、国防大臣級にまで昇進し文武両道で知られたのは？", a: ["王 越", "李 越", "張 越", "劉 越"], c: 0 },
+
+    // --- その他 ---
+    { q: "パソコンの文字規格、Shift_JIS。「越」の前2つは悦、謁。後2つは〇、榎。〇に入るのはどれ？", a: ["閲", "駅", "厭", "円"], c: 0 }
 ];
 
 /* 正解時に追加表示する解説。問題文をキーにして参照する。 */
 const correctExpls = {
+    "超越ということばがありますが、超と越の違いはどれ？": "超 は 「高い・多い」方向にこえます。越は 「向こう側」へこえます。",
     "「あやまち、過失」を意味し、「落ち度」の語源とされる言葉は？": "越度が変化して現在の「落ち度」になったと言われています。",
     "古代中国において戉は何の象徴とされていた？": "斧が持つ霊的な力によって、困難や境界を突破していくという力強いニュアンスがその根源にあります。",
     "ベトナムの国名「越南」はいつ「ベトナム」に変わった？": "越南をベトナム語で書くとViệt Namであり、国名は越南で変わっていないのです。",
     "実在の越後屋（三越のルーツ）が掲げた画期的な商法は？": "現金掛け値なしは、定価販売・即時決済のことです。当時は後払いが主流でした。",
     "時代劇で「越後屋」が悪役として定着した理由の一つとされる事件は？": "三越事件は、1982年、当時の三越社長が愛人への利益供与、商品不正仕入れ、独裁的な経営のため、取締役会で社長を解任された事件です。",
     "「越後騒動」で知られる越後高田藩主・松平光長は、徳川家康の何にあたる？": "越後騒動：松平光長は徳川家康の曾孫にあたる名門でしたが、後継者問題をめぐって藩内が真っ二つに割れ、幕府が介入して事態を収拾しました。",
-    "正史「三国志」に登場する武将で、公孫瓚の弟の名前は？": "公孫越の戦死が、袁紹戦争のきっかけになりました。"
+    "正史「三国志」に登場する武将で、公孫瓚の弟の名前は？": "公孫越の戦死が、袁紹戦争のきっかけになりました。",
+    "パソコンの文字規格、Shift_JIS。「越」の前2つは悦、謁。後2つは〇、榎。〇に入るのはどれ？": "今はShift_JISではなく、UTF-8が主流です。本アプリもUTF-8で作られています。"
 };
 
 /* =========================
@@ -1005,5 +1100,6 @@ function showCertificate(rank) {
 
 showTitle();
     </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
