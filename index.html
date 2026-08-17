@@ -1,8 +1,9 @@
 <!--
     越検定 Webアプリ（iPadOS 15.8.x 対応版）
+    - タイトルに「今日の一句」を表示
     - 「越」に関する四択問題をランダムに10問出題
-    - 得点に応じて級を判定し、合格者には合格証を表示
-    - 合格証はCanvasでPNG画像として生成・保存
+    - 得点に応じて級を判定し、合格者には賞状を表示
+    - 賞状はCanvasでPNG画像として生成・保存
     - 外部ライブラリは使用せず、HTML/CSS/JavaScriptのみで構成
 
     修正履歴：(iPadOS 15.8.x ＝ Safari 15 対策)
@@ -11,7 +12,7 @@
         @supports not (aspect-ratio: 1 / 1) ブロック内の
         padding-top: 70.72% ハックに置き換え。
         → iPadOS 15 の Safari 15.x は aspect-ratio が未実装で
-          ルールが丸ごと破棄され、合格証が縦に伸びて画面下端の
+          ルールが丸ごと破棄され、賞状が縦に伸びて画面下端の
           進捗バー領域を覆い隠していた。
 
     (B) .progress-container を flex 兄弟から外し
@@ -353,7 +354,7 @@ button:active {
 }
 
 /* =========================
-   合格証の表示
+   賞状の表示
    ========================= */
 .certificate-overlay {
     position: fixed;
@@ -367,7 +368,7 @@ button:active {
     backdrop-filter: blur(3px);
 }
 
-/* 縦横比 1.414:1（A4）を維持するため、まず新仕様で指定。
+/* 縦横比 1.414:1（A4）を維持しようとするが、
    Safari 15 は aspect-ratio を実装していないため、
    下部の @supports not (...) ブロックで padding-top ハックへフォールバック。 */
 .certificate {
@@ -379,7 +380,7 @@ button:active {
     padding: 48px 40px;
     width: 90%;
     max-width: 720px;
-    /* 新ブラウザ向け：これで 1.414:1 を維持 */
+    /* 新しいブラウザ向け：これで 1.414:1 を維持 */
     aspect-ratio: 1.414 / 1;
     display: flex;
     flex-direction: column;
@@ -396,7 +397,7 @@ button:active {
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* 合格証の四隅を飾る装飾 */
+/* 賞状の四隅を飾る装飾 */
 .certificate::before,
 .certificate::after {
     content: "❧";
@@ -423,7 +424,7 @@ button:active {
 .cert-corner-bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
 .cert-corner-br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
 
-/* 合格証の落款（印影） */
+/* 賞状の落款（印影） */
 .cert-seal {
     position: absolute;
     bottom: 20px;
@@ -470,7 +471,7 @@ button:active {
     max-width: 90%;
 }
 
-/* 合格証の発行日・発行者名 */
+/* 賞状の発行日・発行者名 */
 .cert-footer {
     width: 100%;
     text-align: right;
@@ -496,6 +497,60 @@ button:active {
 /* 問題の途中で切り替える背景色 */
 .bg-2 {
     background-color: var(--bg-color-2);
+}
+
+/* =========================
+   今日の一句
+   ========================= */
+.haiku-box {
+    margin: 24px auto 0;
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    padding: 18px 24px 14px;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 2px 2px 6px rgba(92,61,46,0.08);
+    background-color: rgba(255,253,248,0.85);
+}
+
+.haiku-label {
+    text-align: center;
+    font-size: 0.95rem;
+    letter-spacing: 0.15em;
+    color: var(--accent-color);
+    opacity: 0.85;
+    margin-bottom: 10px;
+}
+
+.haiku-lines {
+    text-align: center;
+    font-size: 1.25rem;
+    line-height: 2;
+    letter-spacing: 0.1em;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+.haiku-lines div {
+    display: block;
+}
+
+.haiku-author {
+    text-align: right;
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-color);
+    opacity: 0.85;
+}
+
+@media (max-width: 600px) {
+    .haiku-box {
+        padding: 14px 16px 12px;
+        max-width: 280px;
+    }
+    .haiku-lines {
+        font-size: 1.05rem;
+    }
 }
 
 .correct { color: var(--correct-color); }
@@ -549,7 +604,7 @@ button:active {
     .cert-title { font-size: 1.7rem; }
     .certificate {
         padding: 28px 18px;
-        aspect-ratio: auto;  /* 新ブラウザ向け：モバイル幅では比率解除 */
+        aspect-ratio: auto;  /* 新しいブラウザ向け：モバイル幅では比率解除 */
         width: 92%;
         gap: 14px;
     }
@@ -585,7 +640,7 @@ button:active {
    中身は全要素を absolute 配置で枠内に収める。
    ============================================================ */
 @supports not (aspect-ratio: 1 / 1) {
-    /* タイトル画面比率（参考）：新仕様の aspect-ratio が無効な環境用 */
+    /* タイトル画面比率（参考）：aspect-ratio が無効な環境用 */
     .certificate {
         height: 0;
         padding-top: 70.72%; /* 1/1.414 ≈ 0.7072 → 約 70.72% */
@@ -644,6 +699,137 @@ button:active {
         <div id="progress-bar" class="progress-bar"></div>
     </div>
     <script>
+/* =========================
+   二十四節気取得
+   立春=1 ～ 大寒=24 を返す。
+   ========================= */
+function getSekki() {
+  const now = new Date();
+  const m = now.getMonth() + 1;
+  const d = now.getDate();
+
+  const table = [
+    { m: 2,  d: 4,  idx: 1  }, // 立春
+    { m: 2,  d: 19, idx: 2  }, // 雨水
+    { m: 3,  d: 6,  idx: 3  }, // 啓蟄
+    { m: 3,  d: 21, idx: 4  }, // 春分
+    { m: 4,  d: 5,  idx: 5  }, // 清明
+    { m: 4,  d: 20, idx: 6  }, // 穀雨
+    { m: 5,  d: 5,  idx: 7  }, // 立夏
+    { m: 5,  d: 21, idx: 8  }, // 小満
+    { m: 6,  d: 6,  idx: 9  }, // 芒種
+    { m: 6,  d: 21, idx: 10 }, // 夏至
+    { m: 7,  d: 7,  idx: 11 }, // 小暑
+    { m: 7,  d: 23, idx: 12 }, // 大暑
+    { m: 8,  d: 7,  idx: 13 }, // 立秋
+    { m: 8,  d: 23, idx: 14 }, // 処暑
+    { m: 9,  d: 8,  idx: 15 }, // 白露
+    { m: 9,  d: 23, idx: 16 }, // 秋分
+    { m: 10, d: 8,  idx: 17 }, // 寒露
+    { m: 10, d: 23, idx: 18 }, // 霜降
+    { m: 11, d: 7,  idx: 19 }, // 立冬
+    { m: 11, d: 22, idx: 20 }, // 小雪
+    { m: 12, d: 7,  idx: 21 }, // 大雪
+    { m: 12, d: 22, idx: 22 }, // 冬至
+    { m: 1,  d: 6,  idx: 23 }, // 小寒
+    { m: 1,  d: 20, idx: 24 }, // 大寒
+  ];
+
+  const dates = table.map(t => new Date(now.getFullYear(), t.m - 1, t.d));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (today < dates[0]) return 24;
+
+  for (let i = 0; i < dates.length - 1; i++) {
+    if (today >= dates[i] && today < dates[i + 1]) {
+      return table[i].idx;
+    }
+  }
+
+  return 24;
+}
+
+/* =========================
+   俳句データ（echigo_haiku_with_sekki.csv より組み込み）
+   地域 / 作者 / 句（上句 中句 下句をスペース区切り）/ 二十四節気番号
+   ========================= */
+const haikuData = [
+  { 地域: "越前",         作者: "各務支考", 句: "念仏と 豆腐とふとし 老の春",       番号: 1  },
+  { 地域: "越後",         作者: "良寛",     句: "霞立ち 春は来にけり 出雲崎",       番号: 1  },
+  { 地域: "越後",         作者: "鈴木牧之", 句: "雪国の 春は名のみの 寒さかな",     番号: 1  },
+  { 地域: "越前",         作者: "志太野坡", 句: "静さや 梅の苔吸 秋の蜂",           番号: 2  },
+  { 地域: "越中",         作者: "前田普羅", 句: "春の雪 立山見えて をりをりに",     番号: 2  },
+  { 地域: "越前",         作者: "志太野坡", 句: "鶯や 木末は鴉 置きながら",         番号: 3  },
+  { 地域: "越中",         作者: "浪化",     句: "松杉の 根かたの梅の 遅速哉",       番号: 3  },
+  { 地域: "越後",         作者: "井上井月", 句: "降る雪の あとを忘れて 春の風",     番号: 3  },
+  { 地域: "越中",         作者: "浪化",     句: "鶯の 鳴くや井波の 杉の露",         番号: 4  },
+  { 地域: "越後",         作者: "鈴木牧之", 句: "雪解けて 村一ぱいの 子どもかな",   番号: 4  },
+  { 地域: "越前",         作者: "志太野坡", 句: "世の中の 花は不思議よ 芳野山",     番号: 5  },
+  { 地域: "越中",         作者: "角川源義", 句: "ひとりゐの 膝こぶいたく 雁かへる", 番号: 5  },
+  { 地域: "越前",         作者: "各務支考", 句: "ちりぢりに 春やぼたんの 花の上",   番号: 6  },
+  { 地域: "越後",         作者: "良寛",     句: "散る桜 残る桜も 散る桜",           番号: 6  },
+  { 地域: "越前",         作者: "各務支考", 句: "五月雨の 夕日や見せて 出雲崎",     番号: 9  },
+  { 地域: "越中",         作者: "浪化",     句: "夏衣 たたきや蚊屋の 外に出る",     番号: 11 },
+  { 地域: "越後の旅路にて", 作者: "松尾芭蕉", 句: "文月や 六日も常の 夜には似ず",   番号: 11 },
+  { 地域: "越前",         作者: "志太野坡", 句: "夕すずみ あぶなき石に のぼりけり", 番号: 12 },
+  { 地域: "越中",         作者: "前田普羅", 句: "立山のかぶさる町や 水を打つ",       番号: 12 },
+  { 地域: "越中の旅路にて", 作者: "松尾芭蕉", 句: "早稲の香や 分け入る右は 有磯海",  番号: 13 },
+  { 地域: "越後",         作者: "鈴木牧之", 句: "秋の風 筆の先より 吹きにけり",     番号: 13 },
+  { 地域: "越後の旅路にて", 作者: "松尾芭蕉", 句: "荒海や 佐渡によこたふ 天河",     番号: 13 },
+  { 地域: "越中の旅路にて", 作者: "松尾芭蕉", 句: "あかあかと 日は難面も 秋の風",   番号: 14 },
+  { 地域: "越前の旅路にて", 作者: "松尾芭蕉", 句: "月清し 遊行のもてる 砂の上",     番号: 15 },
+  { 地域: "越中",         作者: "吉沢庄作", 句: "剱岳さわたる 我と秋の雲",           番号: 15 },
+  { 地域: "越後",         作者: "井上井月", 句: "何処にか 宿はとらるる 雁の声",     番号: 15 },
+  { 地域: "越後の旅路にて", 作者: "松尾芭蕉", 句: "一家に 遊女もねたり 萩と月",     番号: 15 },
+  { 地域: "越中",         作者: "浪化",     句: "月花の 主となるや 旅の空",         番号: 16 },
+  { 地域: "越前",         作者: "志太野坡", 句: "銭湯の 湯に浮く顔や 今日の月",     番号: 16 },
+  { 地域: "越前の旅路にて", 作者: "松尾芭蕉", 句: "名月や 北国日和 定めなき",       番号: 16 },
+  { 地域: "越中",         作者: "前田普羅", 句: "色変へて 立山の夕 茜かな",         番号: 17 },
+  { 地域: "越後",         作者: "良寛",     句: "青空に 筆の跡なき 雁の声",         番号: 17 },
+  { 地域: "越後",         作者: "井上井月", 句: "落つるまで 待たでや去なん 今日の月", 番号: 17 },
+  { 地域: "越後",         作者: "良寛",     句: "うらを見せ おもてを見せて 散るもみぢ", 番号: 18 },
+  { 地域: "越後",         作者: "良寛",     句: "焚くほどは 風がもてくる 落葉かな", 番号: 19 },
+  { 地域: "越中",         作者: "前田普羅", 句: "雪山を 越えて来たりし 心かな",     番号: 20 },
+  { 地域: "越後",         作者: "鈴木牧之", 句: "冬籠り 越後の雪の 深さかな",       番号: 20 },
+  { 地域: "越中",         作者: "前田普羅", 句: "この雪に 昨日はありし 声音かな",   番号: 21 },
+  { 地域: "越後",         作者: "井上井月", 句: "越後獅子 どこへ行くやら 雪の暮",   番号: 21 },
+  { 地域: "越前の旅路にて", 作者: "松尾芭蕉", 句: "種となる 石に掘り込む 冬の空",   番号: 22 },
+  { 地域: "越中",         作者: "角川源義", 句: "湖暮れて 凍雲のひかり 我におよぶ", 番号: 22 },
+  { 地域: "越前",         作者: "各務支考", 句: "梅が香の 筋に立よる 初日哉",       番号: 23 },
+  { 地域: "越中",         作者: "角川源義", 句: "雪嶺に 雪よぶ鴉",                   番号: 23 },
+  { 地域: "越中",         作者: "浪化",     句: "雪の朝 二の字二の字の 下駄の跡",   番号: 24 },
+  { 地域: "越中",         作者: "角川源義", 句: "夕吹雪 鴉寄り来る 桑畑",           番号: 24 },
+  { 地域: "越後",         作者: "鈴木牧之", 句: "山国の 月や氷を 砕く音",           番号: 24 },
+];
+
+/* 二十四節気番号から今日の一句をランダムに選ぶ。
+   欠番: 7→6、8→9、10→11 */
+function getTodaysHaiku() {
+  let num = getSekki();
+  if (num === 7)  num = 6;
+  else if (num === 8)  num = 9;
+  else if (num === 10) num = 11;
+
+  const list = haikuData.filter(h => h.番号 === num);
+  if (list.length === 0) return null;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+/* 句（スペース区切り）を上句・中句・下句に分割して HTML を生成する。 */
+function buildHaikuHtml() {
+  const haiku = getTodaysHaiku();
+  if (!haiku) return '';
+
+  const parts = haiku.句.split(' ');
+  const lines = parts.map(p => '<div>' + p + '</div>').join('');
+
+  return '<div class="haiku-box">' +
+    '<div class="haiku-label">今日の一句</div>' +
+    '<div class="haiku-lines">' + lines + '</div>' +
+    '<div class="haiku-author">' + haiku.地域 + '　' + haiku.作者 + '</div>' +
+    '</div>';
+}
+
 /* =========================
    越検定：問題データ
    q = 問題文 / a = 選択肢 / c = 正解の選択肢番号（0始まり）
@@ -828,7 +1014,7 @@ function playInkAnimation(type) {
 function showTitle() {
     document.body.classList.remove('bg-2');
     progressBar.style.width = '0%';
-    app.innerHTML = '<div class="fade-in"><h1>越検定</h1><img src="./etsu.gif" alt="越の書き順アニメ"><h3>あなたも検定に合格して「越」に入ろう</h3><br><button class="start-btn" onclick="startQuiz()">START</button></div>';
+    app.innerHTML = '<div class="fade-in"><h1>越検定</h1><img src="./etsu.gif" alt="越の書き順アニメ"><h3>あなたも検定に合格して「越」に入ろう</h3><br><button class="start-btn" onclick="startQuiz()">START</button>' + buildHaikuHtml() + '</div>';
 }
 
 /* 問題をシャッフルし、10問を選んでクイズを開始する。 */
@@ -951,7 +1137,7 @@ function getJapaneseDate() {
     }
 }
 
-/* 合格証をCanvasに描画し、PNGとして保存できるData URLを生成する。 */
+/* 賞状をCanvasに描画し、PNGとして保存できるData URLを生成する。 */
 function generateCertificateImage(rank, dateStr) {
     const W = 1400, H = 990;
     const canvas = document.createElement('canvas');
@@ -989,7 +1175,7 @@ function generateCertificateImage(rank, dateStr) {
     ctx.font = 'bold 72px "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif';
     ctx.fillStyle = '#2b2b2b';
     ctx.textAlign = 'center';
-    ctx.fillText('越検定 合格証', W / 2, 190);
+    ctx.fillText('越検定 賞状', W / 2, 190);
 
     // 下線（二重）
     ctx.strokeStyle = '#2b2b2b';
@@ -1003,7 +1189,7 @@ function generateCertificateImage(rank, dateStr) {
     ctx.fillStyle = '#b22222';
     ctx.fillText('越検定 ' + rank, W / 2, 400);
 
-    // 合格証の本文
+    // 賞状の本文
     ctx.font = '38px "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif';
     ctx.fillStyle = '#3a3a3a';
     const lines = [
@@ -1039,7 +1225,7 @@ function generateCertificateImage(rank, dateStr) {
     return canvas.toDataURL('image/png');
 }
 
-/* 合格証のHTML表示と画像保存ボタンを生成する。背景タップでタイトルへ戻る。 */
+/* 賞状のHTML表示と画像保存ボタンを生成する。背景タップでタイトルへ戻る。 */
 function showCertificate(rank) {
     const overlay = document.createElement('div');
     overlay.className = 'certificate-overlay';
@@ -1052,14 +1238,14 @@ function showCertificate(rank) {
 
     const dateStr = getJapaneseDate();
 
-    // 画面上に表示する合格証をHTML要素として構築
+    // 画面上に表示する賞状をHTML要素として構築
     const certDiv = document.createElement('div');
     certDiv.className = 'certificate';
     certDiv.innerHTML =
         '<div class="cert-corner-tl"></div><div class="cert-corner-tr"></div>' +
         '<div class="cert-corner-bl"></div><div class="cert-corner-br"></div>' +
         '<div class="cert-seal">越</div>' +
-        '<div class="cert-title">越検定 合格証</div>' +
+        '<div class="cert-title">越検定 賞状</div>' +
         '<div class="cert-rank">越検定 ' + rank + '</div>' +
         '<div class="cert-body">' +
             'あなたは「越」に関する深い知識を有し、' +
@@ -1073,7 +1259,7 @@ function showCertificate(rank) {
         '<div class="cert-close-hint">画面をタップして閉じる</div>';
     overlay.appendChild(certDiv);
 
-    // Canvasで生成した合格証画像を保存するボタン
+    // Canvasで生成した賞状画像を保存するボタン
     const saveBtn = document.createElement('button');
     saveBtn.textContent = '画像として保存';
     saveBtn.style.cssText = 'margin-top:24px;padding:14px 36px;font-size:1.2rem;font-family:"Noto Serif JP",serif;background:#5c3d2e;color:#fdf5e6;border:2px solid #5c3d2e;border-radius:4px;cursor:pointer;letter-spacing:0.15em;box-shadow:2px 2px 8px rgba(0,0,0,0.3);';
@@ -1084,7 +1270,7 @@ function showCertificate(rank) {
         const dataUrl = generateCertificateImage(rank, dateStr);
         const a = document.createElement('a');
         a.href = dataUrl;
-        a.download = '越検定合格証_' + rank + '.png';
+        a.download = '越検定賞状_' + rank + '.png';
         // iOS Safari対策
         if (navigator.userAgent.match(/iPhone|iPad|iPod/)) {
             const win = window.open();
